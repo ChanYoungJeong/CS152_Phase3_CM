@@ -149,7 +149,6 @@ void checkSymbol(string name) {
 %token RETURN
 
 /* arithmetic operators */
-%token MOD
 
 /* comparison operators */
 %token EQ
@@ -163,6 +162,7 @@ void checkSymbol(string name) {
 %left SUB
 %left MULT
 %left DIV
+%left MOD
 %left L_SQUARE_BRACKET
 %left R_SQUARE_BRACKET
 %left L_PAREN
@@ -207,15 +207,26 @@ start : /*epsilon*/{printf("start -> epsilon\n");}|
 	;
 
 
-function : FUNCTION identifiers SEMICOLON 
-	   BEGIN_PARAMS declarations END_PARAMS
- 	   BEGIN_LOCALS declarations END_LOCALS
-	   BEGIN_BODY statements END_BODY
-	   {printf("function -> FUNCTION identifiers SEMICOLON\n");} 
-	   {printf("	     BEGIN_PARAMS declarations END_PARAMS\n");} 
-	   {printf("  	     BEGIN_LOCALS declarations END_LOCALS\n");}
-	   {printf("	     BEGIN_BODY statements END_BODY\n");}
-	   ;
+function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
+          declarations { 
+            paramCount = 0;
+            while (!paramStack.empty()){
+              inCode << "= " << paramStack.top() << ", " << "$" << paramCount++ << endl;
+              paramStack.pop();
+            }
+          } 
+          END_PARAMS  BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statement SEMICOLON statements END_BODY {
+            outCode << "endfunc\n";
+            symbolTable.clear();
+            if (strcmp($2, "main")==0) {
+              mainExists = 1;      
+            }
+            Funct f($2);
+            addFunct(f);
+            while (!paramStack.empty()) {
+              paramStack.pop();
+            }
+          };
 
 declarations: /*epsilon*/
 	    {printf("declarations->epsilon\n");}
@@ -258,9 +269,11 @@ statement:	vars
 		{printf("statement->returns\n");}
 		;
 
-vars:	var ASSIGN expression
-    	{printf("vars->var ASSIGN expression\n");}
-		;
+vars:  /*epsilon*/
+         | COMMA var vars {
+             varStack.push($2.name);
+           };
+
 
 ifs:	IF bool_exp THEN statements ENDIF
    		{printf("ifs->IF bool_exp THEN statements ENDIF\n");}
@@ -309,58 +322,177 @@ bool_exp : bool_exp expression comp expression
 	   {printf("bool_exp -> epsilon\n");}
 	   ;
 
-comp :   EQ
-	{printf("comp -> EQ\n");}
-	|NEQ
-        {printf("comp -> NEQ\n");}
-	|LT
-        {printf("comp -> LT\n");}
-	|GT
-        {printf("comp -> GT\n");}
-	|LTE
-        {printf("comp -> LTE\n");}
-	|GTE
-        {printf("comp -> GTE\n");}
-	;
+comp: EQ { $$ = const_cast<char*>("=="); } 
+    | NEQ { $$ = const_cast<char*>("!="); }
+    | LT { $$ = const_cast<char*>("<"); }
+    | GT { $$ = const_cast<char*>(">"); }
+    | LTE { $$ = const_cast<char*>("<="); }
+    | GTE { $$ = const_cast<char*>(">="); };
 
 expression : mul_exp {printf("expression -> mul_exp\n");}
 		| expression ADD mul_exp {printf("expression -> expression ADD mul_exp\n");}
 		| expression SUB mul_exp {printf("expression -> expression SUB mul_exp\n");}
 		;
 
-mul_exp : term
-	 {printf("mul_exp -> term\n");}
-       	 |mul_exp MULT term
-         {printf("mul_exp -> mul_exp MULT term\n");}
-	 |mul_exp DIV term
-         {printf("mul_exp -> mul_exp DIV term\n");}
-	 |mul_exp MOD term
-         {printf("mul_exp -> mul_exp MOD term\n");}
-	 ;
+mul_exp : term {
+		 strcpy($$.name,$1.name);
+         $$.type = $1.type;
+		};
+       	 |mul_exp MULT term {
+		 string temp = make_temp();
+         in_code << ". " << temp << endl;
+         in_code << "* " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, temp.c_str());
+		};
+	 |mul_exp DIV term {
+		 string temp = make_temp();
+         inCode << ". " << temp << endl;
+    	 inCode << "/ " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, temp.c_str());
+		};
+	 |mul_exp MOD term {
+		 string temp = make_temp();
+         inCode << ". " << temp << endl;
+         inCode << "% " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, temp.c_str());
+		};
 
-term : var
-         {printf("term -> var\n");}
-	|numbers
-         {printf("term -> numbers\n");}
-	|L_PAREN expression R_PAREN
-         {printf("term -> L_PAREN expression R_PAREN\n");}
-	|identifiers L_PAREN R_PAREN
-	 {printf("term -> identifiers L_PAREN R_PAREN\n");}
-	|identifiers L_PAREN expression_list R_PAREN
-         {printf("mul_exp -> identifiers L_PAREN expression R_PAREN\n");}
-	;
+term: SUB var {
+        $$.val = $2.val*-1;
+        $$.type = $2.type;
+        if ($2.type != 1) {
+          string zero = makeTemp();
+          string num = makeTemp();
+          inCode << ". " << zero << endl;
+          inCode << "= " << zero << ", " << "0" << endl;
+          inCode << ". " << num << endl;
+          inCode << "= " << num << ", " << const_cast<char*>($2.name) << endl;
+          strcpy($$.name, makeTemp().c_str());
+          inCode << ". " << const_cast<char*>($$.name) << endl;
+          inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", " << num << endl;
+         }        
+        else if ($2.type == 1) {
+          string zero = makeTemp();
+          string num = makeTemp();
+          inCode << ". " << zero << endl;
+          inCode << "= " << zero << ", " << "0" << endl;
+          inCode << ". " << num << endl;
+          inCode << ". " << num << endl;
+          inCode << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.index) << endl;
+          strcpy($$.name, make_temp().c_str());
+          inCode << ". " <<  const_cast<char*>($$.name) << endl;
+          inCode << "- " << const_cast<char*>($$.name) << ", " << zero <<  ", " << num << endl;
+        }
+      }
+    | var {
+        $$.val = $1.val;
+        $$.type = $1.type;
+        if ($1.type != 1) {
+          strcpy($$.name, makeTemp().c_str());
+          strcpy($$.ind, $$.name);
+          inCode << ". " << const_cast<char*>($$.name) << endl;
+          inCode << "= " << const_cast<char*>($$.name) <<  ", " << const_cast<char*>($1.name) << endl;
+        }
+        else if ($1.type == 1) {
+          strcpy($$.name, makeTemp().c_str());
+          inCode << ". " <<  const_cast<char*>($$.name) << endl;
+          inCode << "=[] " << const_cast<char*>($$.name) << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.ind) << endl;
+        }
 
-expression_list : expression_list COMMA expression
-                {printf("expression_list -> expression_list COMMA expression\n");}
-		| expression
-		{printf("expression_list -> expression\n");}
+      }
+    | SUB NUMBER {
+        $$.val = $2*(-1);
+        $$.type = 0;
+        string zero = makeTemp();
+        string num = makeTemp();
+        inCode << ". " << zero << endl;
+        inCode << "= " << zero << ", " << "0" << endl;
+        inCode << ". " << num << endl;
+        inCode << "= " << num << ", " << $2 << endl;
+
+        strcpy($$.name, makeTemp().c_str());
+        inCode << ". " << const_cast<char*>($$.name) << endl;
+        inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< num << endl;
+     }
+    | NUMBER  {
+        $$.val = $1;
+        $$.type = 0;
+
+        strcpy($$.name, makeTemp().c_str());
+        strcpy($$.index, $$.name);
+        inCode << ". " << const_cast<char*>($$.name) << endl;
+        inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;
+      }
+     | SUB L_PAREN expression R_PAREN {
+
+       string zero = makeTemp();
+
+       inCode << ". " << zero << endl;
+       inCode << "= " << zero << ", " << "0"<< endl;
+        
+       strcpy($$.name, make_temp().c_str());
+       inCode << ". " << const_cast<char*>($$.name) << endl;
+       inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($3.name) << endl;
+      }
+    | L_PAREN expression R_PAREN {
+        strcpy($$.name, $2.name);
+    }
+    | IDENT L_PAREN expression expression_list R_PAREN {
+        checkFunct(const_cast<char*>($1));
+        expStack.push($3.name); 
+        while (!expStack.empty()){
+          inCode << "param " << expStack.top() << endl;
+          expStack.pop();
+        }
+        string temp = make_temp();
+        inCode << ". " << temp << endl;
+        inCode << "call " << const_cast<char*>($1) << ", " << temp << endl;
+        strcpy($$.name, temp.c_str());
+      }
+    | IDENT L_PAREN R_PAREN {
+        checkFunct(const_cast<char*>($1));
+        string temp = makeTemp();
+        inCode << ". " << temp << endl;
+        inCode << "call " << const_cast<char*>($1) << ", " << temp << endl;
+        strcpy($$.name, temp.c_str());
+      };
+
+expression_list : /*epsilon*/
+		| COMMA expression expression_list
+		{expStack.push($2.name);}
 		;
 
-var : identifiers
-         {printf("var -> identifiers\n");}
-	|identifiers L_SQUARE_BRACKET expression R_SQUARE_BRACKET
-         {printf("var -> identifiers L_SQUARE_BRACKET expression R_SQUARE_BRACKET\n");}
-	;
+var: IDENT {
+       checkSymbol($1);
+       if(symbolTable[$1].type == INTARR) {
+         yyerror("Symbol is of type int array");
+       }
+       else {
+         strcpy($$.name,$1);
+         $$.type = 0;
+       }
+     }
+   | IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+       checkSymbol($1);
+       if(symbolTable[$1].type == INT) {
+         yyerror("Symbol is of type int");
+       }
+       else {
+         if ($3.type == 1) {
+           string temp = makeTemp();
+           $$.type = 1;
+           strcpy($$.index, temp.c_str());
+           strcpy($$.name, $1);
+           inCode << ". " << temp << endl; 
+           inCode << "=[] " << temp << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.index) << endl;
+         }
+         else {
+           strcpy($$.name, $1);
+           $$.type = 1;
+           strcpy($$.index, $3.name);
+         }
+       }
+     };
 
 numbers: NUM
 		{printf("numbers -> NUM %d\n", $1);}
