@@ -400,7 +400,7 @@ term: SUB var {
         }
 
       }
-    | SUB NUMBER {
+    | SUB NUM {
         $$.val = $2*(-1);
         $$.type = 0;
         string zero = makeTemp();
@@ -414,12 +414,12 @@ term: SUB var {
         inCode << ". " << const_cast<char*>($$.name) << endl;
         inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< num << endl;
      }
-    | NUMBER  {
+    | NUM {
         $$.val = $1;
         $$.type = 0;
 
         strcpy($$.name, makeTemp().c_str());
-        strcpy($$.index, $$.name);
+        strcpy($$.ind, $$.name);
         inCode << ". " << const_cast<char*>($$.name) << endl;
         inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;
       }
