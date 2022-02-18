@@ -48,6 +48,7 @@ int tempCount = 0;
 int labelCount = 0;
 int paramCount = 0;
 bool mainExists = 0;
+extern FILE *yyin;
 
 string makeTemp() {
   stringstream ss;
@@ -201,10 +202,8 @@ void checkSymbol(string name) {
 
 %%
 
-start : /*epsilon*/{printf("start -> epsilon\n");}|
-	start function 
-	{printf("start -> start function");}
-	;
+start : /*epsilon*/
+|start function;
 
 
 function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
@@ -229,44 +228,50 @@ function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BE
           };
 
 declarations: /*epsilon*/
-	    {printf("declarations->epsilon\n");}
 		|declaration SEMICOLON declarations
-		{printf("declarations->declaration SEMICOLON declarations\n");}
 		|declaration error {yyerror;}
 		;
 
-declaration:	identifiers COLON INTEGER
-	   	{printf("declaration->identifiers COLON INTEGER\n");}
-		|identifiers COLON ARRAY L_SQUARE_BRACKET NUM R_SQUARE_BRACKET OF INTEGER
-		{printf("declaration->identifiers COLON ARRAY L_SQUARE_BRACKET NUM %d R_SQUARE_BRACKET OF INTEGER\n", $5);}
-		;
-
+declaration:	IDENT COLON INTEGER {
+               identStack.push($1);
+               paramStack.push($1);
+               while(!identStack.empty()) {
+                 string out = identStack.top();
+                 Symbol sym(0, 0, out, INT); 
+                 addSymbol(sym);
+                 inCode << ". " << out << endl;
+                 identStack.pop(); 
+               }
+             }
+		|IDENT COLON ARRAY L_SQUARE_BRACKET NUM R_SQUARE_BRACKET OF INTEGER {
+               identStack.push($1);
+               paramStack.push($1);
+               while(!identStack.empty()) {
+                 string out = identStack.top();
+                 Symbol sym(0, $6, out, INTARR);
+                 addSymbol(sym);
+                 if($6 == 0){
+                   yyerror("Error: Array cannot be size 0.");
+                 }
+                 inCode << ".[] " << out << ", " << $6 << endl;
+                 identStack.pop(); 
+               }
+             };
 	
 statements:	statement SEMICOLON statements
-	  	{printf("statements->statement SEMICOLON statements\n");}
 		|statement SEMICOLON
-		{printf("statements->statement SEMICOLON\n");}
-		| statement error {yyerror;}
-		;
+		|statement error {yyerror;}
+    ;
 
 statement:	vars
-	  	{printf("statement->vars\n");}
-	  	|ifs
-		{printf("statement->ifs\n");}
+	  |ifs
 		|whiles
-		{printf("statement->whiles\n");}
 		|dos
-		{printf("statement->dos\n");}
 		|reads
-		{printf("statement->reads\n");}
 		|writes
-		{printf("statement->writes\n");}
 		|continues
-		{printf("statement->continues\n");}
 		|breaks
-		{printf("statement->breaks\n");}
 		|returns
-		{printf("statement->returns\n");}
 		;
 
 vars:  /*epsilon*/
@@ -275,51 +280,150 @@ vars:  /*epsilon*/
            };
 
 
-ifs:	IF bool_exp THEN statements ENDIF
-   		{printf("ifs->IF bool_exp THEN statements ENDIF\n");}
-		|IF bool_exp THEN statements ELSE statements ENDIF
-		{printf("ifs->IF bool_exp THEN statements ELSE statements ENDIF\n");}
-		;
+ifs:	IF bool_exp THEN statements ENDIF {
+             string start = makeLabel();
+             string endif = makeLabel();
+             labelStack.push(endif); 
+             inCode << "?:= " << start << ", " << const_cast<char*>($2.name) << endl;
+             inCode << ":= " << endif << endl;
+             inCode << ": " << start << endl;
+           } 
+           statement SEMICOLON statements elses ENDIF {
+             inCode << ": " << labelStack.top() << endl;
+             labelStack.pop();
+             
+             outCode << inCode.rdbuf();
+             inCode.clear();
+             inCode.str(" ");
 
-whiles:	WHILE bool_exp BEGINLOOP statements ENDLOOP
-      	{printf("whiles->WHILE bool_exp BEGINLOOP statements ENDLOOP\n");}
-		;
+           };
 
-dos:	DO BEGINLOOP statements ENDLOOP WHILE bool_exp
-   		{printf("dos-> DO BEGINLOOP statements ENDLOOP WHILE bool_exp\n");}
-		;
+whiles:	WHILE bool_exp BEGINLOOP {
+              string condition = makeLabel();
+              string endlabel = makeLabel();
+              string start = makeLabel();
+              outCode << ": " << start << endl;
+              outCode << inCode.rdbuf();
+              inCode.clear();
+              inCode.str(" ");
+              inCode << "?:= " << condition << ", " << const_cast<char*>($2.name) << endl;
+              inCode << ":= " << endlabel << endl;
+              inCode << ": " << condition << endl;
+              labelStack.push(start);
+              labelStack.push(endlabel);
 
-varLoop:
-       	{printf("varLoop->epsilon\n");}
-		|COMMA var varLoop
-		{printf("varLoop-> COMMA var varLoop\n");}
-		;
+            } statement SEMICOLON statements ENDLOOP {
+                outCode << inCode.rdbuf();
+                inCode.clear();
+                inCode.str(" ");
+                string endlabel = labelStack.top();
+                labelStack.pop();
+                string start = labelStack.top();
+                labelStack.pop();
+                inCode << ":= " << start << endl;
+                inCode << ": " << endlabel << endl;
+                outCode << inCode.rdbuf();
+                inCode.clear();
+                inCode.str(" ");
+           };
 
-reads:  READ var varLoop
-     	{printf("reads->READ var varLoop\n");}
-		;
+dos:	DO BEGINLOOP {
+             string start = makeLabel();
+             labelStack.push(start);
+             outCode << ": " << start << endl;
+             outCode << inCode.rdbuf();
+             inCode.clear();
+             inCode.str(" ");
+            }
+           statement SEMICOLON statements ENDLOOP WHILE bool_expr {
+             string start = labelStack.top();
+             in_code << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
+             labelStack.pop(); 
+             outCode << inCode.rdbuf();
+             inCode.clear();
+             inCode.str(" ");
+           };
+
+reads:  READ var vars {
+             varStack.push($2.name);
+             while (!varStack.empty()) {
+                if ($2.type == 0) {
+                    inCode << ".< " << varStack.top() << endl;
+                    varStack.pop();
+                }
+                else {
+                    inCode << ".[]< " << varStack.top() << ", "  <<  const_cast<char*>($2.ind) << endl;
+                    varStack.pop();
+                }
+             }
+             outCode << inCode.rdbuf();
+             inCode.clear();
+             inCode.str(" ");
+          };
      
-writes: WRITE var varLoop
-      	{printf("writes->WRITE var varLoop\n");}
-		;
+writes: WRITE var vars {
+            varStack.push($2.name);
+            while (!varStack.empty()) {
+                if ($2.type == 0) {
+                    inCode << ".> " << varStack.top() << endl;
+                    varStack.pop();
+                }
+                else {
+                    inCode << ".[]> " << varStack.top() << ", "  <<  const_cast<char*>($2.ind) << endl;
+                    varStack.pop();
+                }
+            }
+            outCode << inCode.rdbuf();
+            inCode.clear();
+            inCode.str(" ");
+         };
 
-continues:  CONTINUE
-	 	{printf("continues->CONTINUE\n");}
-		;
-breaks : BREAK
-		{printf("breaks -> BREAK \n");}
+continues:  CONTINUE {
+             if (!labelStack.empty()) {
+               inCode << ":= " << labelStack.top() << endl;
+               outCode << inCode.rdbuf();
+               inCode.clear();
+               inCode.str(" ");
+             }
+             else {
+               yyerror("Error: Continue used outside of loop");
+             }
+           };
+
+breaks : BREAK {
+             if (!labelStack.empty()) {
+               inCode << ":= " << labelStack.top() << endl;
+               outCode << inCode.rdbuf();
+               inCode.clear();
+               inCode.str(" ");
+             }
+             else {
+               yyerror("Error: Break used outside of loop");
+             }
+           };
 
 
-returns:    RETURN expression
-       	{printf("returns->RETURN expression\n");}
-		;
+returns:    RETURN expression {
+             $$.val = $2.val;
+             strcpy($$.name,$2.name);
+             in_code << "ret " << const_cast<char*>($2.name) << endl;
+             out_code << in_code.rdbuf();
+             in_code.clear();
+             in_code.str(" ");
+         };
 
-bool_exp : bool_exp expression comp expression
-	   {printf("bool_exp -> bool_exp expression comp expression\n");}
-	   |NOT bool_exp
-	   {printf("bool_exp -> NOT bool_exp\n");}
+bool_exp : bool_exp expression comp expression {
+             string out = makeTemp();
+             strcpy($$.name, out.c_str());
+             in_code << ". " << out << endl;
+           }
+	   |NOT bool_exp {
+             string out = makeTemp();
+             strcpy($$.name, out.c_str());
+             in_code << ". " << out << endl;
+             in_code << "! " << temp << ", " << const_cast<char*>($2.name) << endl;
+           }
 	   |/*epsilon*/
-	   {printf("bool_exp -> epsilon\n");}
 	   ;
 
 comp: EQ { $$ = const_cast<char*>("=="); } 
@@ -329,9 +433,22 @@ comp: EQ { $$ = const_cast<char*>("=="); }
     | LTE { $$ = const_cast<char*>("<="); }
     | GTE { $$ = const_cast<char*>(">="); };
 
-expression : mul_exp {printf("expression -> mul_exp\n");}
-		| expression ADD mul_exp {printf("expression -> expression ADD mul_exp\n");}
-		| expression SUB mul_exp {printf("expression -> expression SUB mul_exp\n");}
+expression : mul_exp {
+              strcpy($$.name,$1.name);
+              $$.type = $1.type;
+             }
+		| expression ADD mul_exp {
+              string out = makeTemp();
+              inCode << ". " << out << endl;
+              inCode << "+ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+              strcpy($$.name, out.c_str());
+            }
+		| expression SUB mul_exp {
+              string out = makeTemp();
+              inCode << ". " << out << endl;
+              inCode << "- " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+              strcpy($$.name, out.c_str());
+            }
 		;
 
 mul_exp : term {
@@ -339,22 +456,22 @@ mul_exp : term {
          $$.type = $1.type;
 		};
        	 |mul_exp MULT term {
-		 string temp = make_temp();
-         in_code << ". " << temp << endl;
-         in_code << "* " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, temp.c_str());
+		 string out = make_temp();
+         in_code << ". " << out << endl;
+         in_code << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, out.c_str());
 		};
-	 |mul_exp DIV term {
-		 string temp = make_temp();
-         inCode << ". " << temp << endl;
-    	 inCode << "/ " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, temp.c_str());
+	    |mul_exp DIV term {
+		 string out = make_temp();
+         inCode << ". " << out << endl;
+    	 inCode << "/ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, out.c_str());
 		};
-	 |mul_exp MOD term {
-		 string temp = make_temp();
-         inCode << ". " << temp << endl;
-         inCode << "% " << temp << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, temp.c_str());
+	    |mul_exp MOD term {
+		 string out = make_temp();
+         inCode << ". " << out << endl;
+         inCode << "% " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+         strcpy($$.name, out.c_str());
 		};
 
 term: SUB var {
@@ -378,7 +495,7 @@ term: SUB var {
           inCode << "= " << zero << ", " << "0" << endl;
           inCode << ". " << num << endl;
           inCode << ". " << num << endl;
-          inCode << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.index) << endl;
+          inCode << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.ind) << endl;
           strcpy($$.name, make_temp().c_str());
           inCode << ". " <<  const_cast<char*>($$.name) << endl;
           inCode << "- " << const_cast<char*>($$.name) << ", " << zero <<  ", " << num << endl;
@@ -468,7 +585,7 @@ var: IDENT {
          yyerror("Symbol is of type int array");
        }
        else {
-         strcpy($$.name,$1);
+         strcpy($$.name, $1);
          $$.type = 0;
        }
      }
@@ -481,31 +598,40 @@ var: IDENT {
          if ($3.type == 1) {
            string temp = makeTemp();
            $$.type = 1;
-           strcpy($$.index, temp.c_str());
+           strcpy($$.ind, temp.c_str());
            strcpy($$.name, $1);
            inCode << ". " << temp << endl; 
-           inCode << "=[] " << temp << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.index) << endl;
+           inCode << "=[] " << temp << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.ind) << endl;
          }
          else {
            strcpy($$.name, $1);
            $$.type = 1;
-           strcpy($$.index, $3.name);
+           strcpy($$.ind, $3.name);
          }
        }
      };
-
-numbers: NUM
-		{printf("numbers -> NUM %d\n", $1);}
-	;
-
-identifiers: IDENT
-		{printf("identifiers->IDENT %s\n", $1);}
 
 %%
 
 
 
 int main(int argc, char **argv) {
-   yyparse();
-   return 0;
+   if (argc > 1) {
+    yyin = fopen(argv[1], "r");
+    if (yyin == NULL) {
+      printf("Syntax: %s filename\n", argv[0]);
+    }
+  }
+
+  yyparse();
+
+  if(main_exists==0){
+    yyerror("Error: Main function not found.");
+  }
+
+  ofstream file;
+  file.open("output.mil");
+  file << out_code.str();
+  file.close();
+  return 0;
 }
