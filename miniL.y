@@ -195,7 +195,7 @@ void checkSymbol(string name) {
 %type <attr> vars ifs whiles reads writes continues breaks returns
 
 /* %start program */
-ymstart start
+%start start
 
 
 
