@@ -13,12 +13,15 @@ extern int currentPosition;
 #include <sstream>
 #include <fstream>
 #include <string.h>
+#include <string>
 #include <stack>
 #include <vector>
 #include <map>
 using namespace std;
 
 enum symbolType {INT, INTARR, FUNC};
+
+void yyerror(string msg);
 
 struct Symbol {
   int val;
@@ -64,12 +67,16 @@ string makeLabel() {
   return temp;
 }
 
-void yyerror(const char *msg) {
+void yyerror(const char * msg) {
     /* implement your error handling */
     printf("Error: On line %d, column %d: %s \n", currentLine, currentPosition, msg);
 }
 
-void addFunc(Funct f) {
+void yyerror(string msg) {
+   cout << msg;
+}
+
+void addFunct(Funct f) {
   if (functTable.find(f.name) == functTable.end()) {
     functTable[f.name] = f;
   }
@@ -119,10 +126,15 @@ void checkSymbol(string name) {
   } attr;
 }
 
+
+
 %error-verbose
+ 
 %locations
 
 /* reserved words */
+
+
 %token FUNCTION
 %token BEGIN_PARAMS
 %token END_PARAMS
@@ -191,8 +203,8 @@ void checkSymbol(string name) {
 %type <attr> mul_exp
 %type <attr> bool_exp
 %type <attr> expression_list
-%type <attr> comp
-%type <attr> vars ifs whiles reads writes continues breaks returns
+%type <identVal> comp
+%type <attr> vars dos ifs whiles reads writes continues breaks returns
 
 /* %start program */
 %start start
@@ -215,7 +227,7 @@ function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BE
               paramStack.pop();
             }
           } 
-          END_PARAMS  BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statement SEMICOLON statements END_BODY {
+          END_PARAMS  BEGIN_LOCALS declarations END_LOCALS BEGIN_BODY statements END_BODY {
             outCode << "endfunc\n";
             symbolTable.clear();
             if (strcmp($2, "main")==0) {
@@ -230,7 +242,7 @@ function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BE
 
 declarations: /*epsilon*/
 		|declaration SEMICOLON declarations
-		|declaration error {yyerror;}
+		|declaration 
 		;
 
 declaration:	IDENT COLON INTEGER {
@@ -249,23 +261,23 @@ declaration:	IDENT COLON INTEGER {
                paramStack.push($1);
                while(!identStack.empty()) {
                  string out = identStack.top();
-                 Symbol sym(0, $6, out, INTARR);
+                 Symbol sym(0, $5, out, INTARR);
                  addSymbol(sym);
-                 if($6 == 0){
+                 if($5 == 0){
                    yyerror("Error: Array cannot be size 0.");
                  }
-                 inCode << ".[] " << out << ", " << $6 << endl;
+                 inCode << ".[] " << out << ", " << $5 << endl;
                  identStack.pop(); 
                }
              };
 	
 statements:	statement SEMICOLON statements
 		|statement SEMICOLON
-		|statement error {yyerror;}
+		|statement 
 		;
 
 statement:	vars
-	  |ifs
+	  	|ifs
 		|whiles
 		|dos
 		|reads
@@ -454,26 +466,27 @@ expression : mul_exp {
 
 mul_exp : term {
 		 strcpy($$.name, $1.name);
-         $$.type = $1.type;
-		};
-       	|mul_exp MULT term {
+         	$$.type = $1.type;
+		}
+       	 | mul_exp MULT term {
 		     string out = makeTemp();
          inCode << ". " << out << endl;
          inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
          strcpy($$.name, out.c_str());
-		};
-	    |mul_exp DIV term {
-		     string out = makeTemp();
-         inCode << ". " << out << endl;
-    	   inCode << "/ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, out.c_str());
-		};
-	    |mul_exp MOD term {
-		 string out = makeTemp();
-         inCode << ". " << out << endl;
-         inCode << "% " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, out.c_str());
-		};
+		}
+        |mul_exp DIV term {
+        string out = makeTemp();
+        inCode << ". " << out << endl;
+        inCode << "/ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+        strcpy($$.name, out.c_str());
+		}
+        |mul_exp MOD term {
+        string out = makeTemp();
+        inCode << ". " << out << endl;
+        inCode << "% " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+        strcpy($$.name, out.c_str());
+	};
+
 
 term: SUB var {
         $$.val = $2.val*-1;
@@ -520,6 +533,7 @@ term: SUB var {
       }
     | SUB NUM {
         $$.val = $2*(-1);
+
         $$.type = 0;
         string zero = makeTemp();
         string num = makeTemp();
@@ -626,13 +640,13 @@ int main(int argc, char **argv) {
 
   yyparse();
 
-  if(main_exists==0){
+  if(mainExists==0){
     yyerror("Error: Main function not found.");
   }
 
   ofstream file;
   file.open("output.mil");
-  file << out_code.str();
+  file << outCode.str();
   file.close();
   return 0;
 }
