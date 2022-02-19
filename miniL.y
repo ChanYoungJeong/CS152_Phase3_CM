@@ -175,7 +175,7 @@ void checkSymbol(string name) {
 /* identifiers and numbers */
 %token <numVal> NUM
 %token <identVal> IDENT
-%token <identVal> comp
+
 
 /* other special symbols */
 %token SEMICOLON
@@ -186,15 +186,16 @@ void checkSymbol(string name) {
 %type <attr> var
 %type <attr> expression
 %type <attr> term
-%type <attr> declaration
+%type <attr> declarations declaration 
 %type <attr> statement
 %type <attr> mul_exp
 %type <attr> bool_exp
 %type <attr> expression_list
-
+%type <attr> comp
+%type <attr> vars ifs whiles reads writes continues breaks returns
 
 /* %start program */
-%start start
+ymstart start
 
 
 
@@ -261,7 +262,7 @@ declaration:	IDENT COLON INTEGER {
 statements:	statement SEMICOLON statements
 		|statement SEMICOLON
 		|statement error {yyerror;}
-    ;
+		;
 
 statement:	vars
 	  |ifs
@@ -288,7 +289,7 @@ ifs:	IF bool_exp THEN statements ENDIF {
              inCode << ":= " << endif << endl;
              inCode << ": " << start << endl;
            } 
-           statement SEMICOLON statements elses ENDIF {
+           statement SEMICOLON statements ELSE ENDIF {
              inCode << ": " << labelStack.top() << endl;
              labelStack.pop();
              
@@ -335,7 +336,7 @@ dos:	DO BEGINLOOP {
              inCode.clear();
              inCode.str(" ");
             }
-           statement SEMICOLON statements ENDLOOP WHILE bool_expr {
+           statement SEMICOLON statements ENDLOOP WHILE bool_exp {
              string start = labelStack.top();
              inCode << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
              labelStack.pop(); 
