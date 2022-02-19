@@ -337,7 +337,7 @@ dos:	DO BEGINLOOP {
             }
            statement SEMICOLON statements ENDLOOP WHILE bool_expr {
              string start = labelStack.top();
-             in_code << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
+             inCode << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
              labelStack.pop(); 
              outCode << inCode.rdbuf();
              inCode.clear();
@@ -405,23 +405,23 @@ breaks : BREAK {
 
 returns:    RETURN expression {
              $$.val = $2.val;
-             strcpy($$.name,$2.name);
-             in_code << "ret " << const_cast<char*>($2.name) << endl;
-             out_code << in_code.rdbuf();
-             in_code.clear();
-             in_code.str(" ");
+             strcpy($$.name, $2.name);
+             inCode << "ret " << const_cast<char*>($2.name) << endl;
+             outCode << inCode.rdbuf();
+             inCode.clear();
+             inCode.str(" ");
          };
 
 bool_exp : bool_exp expression comp expression {
              string out = makeTemp();
              strcpy($$.name, out.c_str());
-             in_code << ". " << out << endl;
+             inCode << ". " << out << endl;
            }
 	   |NOT bool_exp {
              string out = makeTemp();
              strcpy($$.name, out.c_str());
-             in_code << ". " << out << endl;
-             in_code << "! " << temp << ", " << const_cast<char*>($2.name) << endl;
+             inCode << ". " << out << endl;
+             inCode << "! " << out << ", " << const_cast<char*>($2.name) << endl;
            }
 	   |/*epsilon*/
 	   ;
@@ -452,23 +452,23 @@ expression : mul_exp {
 		;
 
 mul_exp : term {
-		 strcpy($$.name,$1.name);
+		 strcpy($$.name, $1.name);
          $$.type = $1.type;
 		};
-       	 |mul_exp MULT term {
-		 string out = make_temp();
-         in_code << ". " << out << endl;
-         in_code << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+       	|mul_exp MULT term {
+		     string out = makeTemp();
+         inCode << ". " << out << endl;
+         inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
          strcpy($$.name, out.c_str());
 		};
 	    |mul_exp DIV term {
-		 string out = make_temp();
+		     string out = makeTemp();
          inCode << ". " << out << endl;
-    	 inCode << "/ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+    	   inCode << "/ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
          strcpy($$.name, out.c_str());
 		};
 	    |mul_exp MOD term {
-		 string out = make_temp();
+		 string out = makeTemp();
          inCode << ". " << out << endl;
          inCode << "% " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
          strcpy($$.name, out.c_str());
@@ -496,7 +496,7 @@ term: SUB var {
           inCode << ". " << num << endl;
           inCode << ". " << num << endl;
           inCode << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.ind) << endl;
-          strcpy($$.name, make_temp().c_str());
+          strcpy($$.name, makeTemp().c_str());
           inCode << ". " <<  const_cast<char*>($$.name) << endl;
           inCode << "- " << const_cast<char*>($$.name) << ", " << zero <<  ", " << num << endl;
         }
@@ -547,7 +547,7 @@ term: SUB var {
        inCode << ". " << zero << endl;
        inCode << "= " << zero << ", " << "0"<< endl;
         
-       strcpy($$.name, make_temp().c_str());
+       strcpy($$.name, makeTemp().c_str());
        inCode << ". " << const_cast<char*>($$.name) << endl;
        inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($3.name) << endl;
       }
@@ -561,17 +561,17 @@ term: SUB var {
           inCode << "param " << expStack.top() << endl;
           expStack.pop();
         }
-        string temp = make_temp();
-        inCode << ". " << temp << endl;
-        inCode << "call " << const_cast<char*>($1) << ", " << temp << endl;
-        strcpy($$.name, temp.c_str());
+        string out = makeTemp();
+        inCode << ". " << out << endl;
+        inCode << "call " << const_cast<char*>($1) << ", " << out << endl;
+        strcpy($$.name, out.c_str());
       }
     | IDENT L_PAREN R_PAREN {
         checkFunct(const_cast<char*>($1));
-        string temp = makeTemp();
-        inCode << ". " << temp << endl;
-        inCode << "call " << const_cast<char*>($1) << ", " << temp << endl;
-        strcpy($$.name, temp.c_str());
+        string out = makeTemp();
+        inCode << ". " << out << endl;
+        inCode << "call " << const_cast<char*>($1) << ", " << out << endl;
+        strcpy($$.name, out.c_str());
       };
 
 expression_list : /*epsilon*/
@@ -596,12 +596,12 @@ var: IDENT {
        }
        else {
          if ($3.type == 1) {
-           string temp = makeTemp();
+           string out = makeTemp();
            $$.type = 1;
-           strcpy($$.ind, temp.c_str());
+           strcpy($$.ind, out.c_str());
            strcpy($$.name, $1);
-           inCode << ". " << temp << endl; 
-           inCode << "=[] " << temp << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.ind) << endl;
+           inCode << ". " << out << endl; 
+           inCode << "=[] " << out << ", " << const_cast<char*>($3.name) << ", " << const_cast<char*>($3.ind) << endl;
          }
          else {
            strcpy($$.name, $1);
