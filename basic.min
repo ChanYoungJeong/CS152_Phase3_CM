@@ -8,7 +8,7 @@ beginlocals
 endlocals
 
 beginbody
-
+  
   a := 150;
   write a;
 

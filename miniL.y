@@ -73,7 +73,7 @@ void yyerror(const char * msg) {
 }
 
 void yyerror(string msg) {
-   cout << msg;
+   cout << msg << endl;
 }
 
 void addFunct(Funct f) {
