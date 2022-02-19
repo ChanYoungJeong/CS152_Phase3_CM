@@ -73,7 +73,7 @@ void yyerror(const char * msg) {
 }
 
 void yyerror(string msg) {
-   cout << msg << endl;
+   cout << "Line : " << currentLine << " Coloumn : " << currentPosition << " " << msg << endl;
 }
 
 void addFunct(Funct f) {
@@ -216,10 +216,10 @@ void checkSymbol(string name) {
 %%
 
 start : /*epsilon*/
-|start function;
+	|start function;
 
 
-function: FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
+function : FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
           declarations { 
             paramCount = 0;
             while (!paramStack.empty()){
@@ -287,9 +287,12 @@ statement:	vars
 		|returns
 		;
 
-vars:  /*epsilon*/
-         | COMMA var vars {
-             varStack.push($2.name);
+vars:      var ASSIGN expression {
+      
+	     inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+	     outCode << inCode.rdbuf();
+	     inCode.clear();
+	     inCode.str(" ");
            };
 
 
@@ -300,8 +303,9 @@ ifs:	IF bool_exp THEN statements ENDIF {
              inCode << "?:= " << start << ", " << const_cast<char*>($2.name) << endl;
              inCode << ":= " << endif << endl;
              inCode << ": " << start << endl;
-           } 
-           statement SEMICOLON statements ELSE ENDIF {
+           }
+ 
+        |IF bool_exp THEN statements ELSE statements ENDIF {
              inCode << ": " << labelStack.top() << endl;
              labelStack.pop();
              
@@ -325,7 +329,7 @@ whiles:	WHILE bool_exp BEGINLOOP {
               labelStack.push(start);
               labelStack.push(endlabel);
 
-            } statement SEMICOLON statements ENDLOOP {
+            } statements ENDLOOP {
                 outCode << inCode.rdbuf();
                 inCode.clear();
                 inCode.str(" ");
@@ -348,16 +352,21 @@ dos:	DO BEGINLOOP {
              inCode.clear();
              inCode.str(" ");
             }
-           statement SEMICOLON statements ENDLOOP WHILE bool_exp {
+           statements ENDLOOP WHILE bool_exp {
              string start = labelStack.top();
-             inCode << "?:= " << start << ", " << const_cast<char*>($9.name) << endl;
+             inCode << "?:= " << start << ", " << const_cast<char*>($7.name) << endl;
              labelStack.pop(); 
              outCode << inCode.rdbuf();
              inCode.clear();
              inCode.str(" ");
            };
 
-reads:  READ var vars {
+var_loop : /*epsilon*/
+	   | COMMA var var_loop
+  		{varStack.push($2.name);}
+	   ;
+
+reads:  READ var var_loop {
              varStack.push($2.name);
              while (!varStack.empty()) {
                 if ($2.type == 0) {
@@ -374,7 +383,7 @@ reads:  READ var vars {
              inCode.str(" ");
           };
      
-writes: WRITE var vars {
+writes: WRITE var var_loop {
             varStack.push($2.name);
             while (!varStack.empty()) {
                 if ($2.type == 0) {
@@ -488,34 +497,7 @@ mul_exp : term {
 	};
 
 
-term: SUB var {
-        $$.val = $2.val*-1;
-        $$.type = $2.type;
-        if ($2.type != 1) {
-          string zero = makeTemp();
-          string num = makeTemp();
-          inCode << ". " << zero << endl;
-          inCode << "= " << zero << ", " << "0" << endl;
-          inCode << ". " << num << endl;
-          inCode << "= " << num << ", " << const_cast<char*>($2.name) << endl;
-          strcpy($$.name, makeTemp().c_str());
-          inCode << ". " << const_cast<char*>($$.name) << endl;
-          inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", " << num << endl;
-         }        
-        else if ($2.type == 1) {
-          string zero = makeTemp();
-          string num = makeTemp();
-          inCode << ". " << zero << endl;
-          inCode << "= " << zero << ", " << "0" << endl;
-          inCode << ". " << num << endl;
-          inCode << ". " << num << endl;
-          inCode << "=[] " << num << ", " << const_cast<char*>($2.name) <<  ", " << const_cast<char*>($2.ind) << endl;
-          strcpy($$.name, makeTemp().c_str());
-          inCode << ". " <<  const_cast<char*>($$.name) << endl;
-          inCode << "- " << const_cast<char*>($$.name) << ", " << zero <<  ", " << num << endl;
-        }
-      }
-    | var {
+term :  var {
         $$.val = $1.val;
         $$.type = $1.type;
         if ($1.type != 1) {
@@ -531,21 +513,6 @@ term: SUB var {
         }
 
       }
-    | SUB NUM {
-        $$.val = $2*(-1);
-
-        $$.type = 0;
-        string zero = makeTemp();
-        string num = makeTemp();
-        inCode << ". " << zero << endl;
-        inCode << "= " << zero << ", " << "0" << endl;
-        inCode << ". " << num << endl;
-        inCode << "= " << num << ", " << $2 << endl;
-
-        strcpy($$.name, makeTemp().c_str());
-        inCode << ". " << const_cast<char*>($$.name) << endl;
-        inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< num << endl;
-     }
     | NUM {
         $$.val = $1;
         $$.type = 0;
@@ -555,8 +522,7 @@ term: SUB var {
         inCode << ". " << const_cast<char*>($$.name) << endl;
         inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;
       }
-     | SUB L_PAREN expression R_PAREN {
-
+     | L_PAREN expression R_PAREN {
        string zero = makeTemp();
 
        inCode << ". " << zero << endl;
@@ -564,12 +530,10 @@ term: SUB var {
         
        strcpy($$.name, makeTemp().c_str());
        inCode << ". " << const_cast<char*>($$.name) << endl;
-       inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($3.name) << endl;
+       inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($2.name) << endl;
       }
-    | L_PAREN expression R_PAREN {
-        strcpy($$.name, $2.name);
-    }
-    | IDENT L_PAREN expression expression_list R_PAREN {
+    
+     | IDENT L_PAREN expression_list R_PAREN {
         checkFunct(const_cast<char*>($1));
         expStack.push($3.name); 
         while (!expStack.empty()){
@@ -589,19 +553,21 @@ term: SUB var {
         strcpy($$.name, out.c_str());
       };
 
-expression_list : /*epsilon*/
-		| COMMA expression expression_list
-		{expStack.push($2.name);}
+expression_list : expression 
+		| expression_list COMMA expression
+		{expStack.push($3.name);}
 		;
 
-var: IDENT {
-       checkSymbol($1);
-       if(symbolTable[$1].type == INTARR) {
-         yyerror("Symbol is of type int array");
+var : IDENT {
+	printf("var->IDENT");
+        checkSymbol($1);
+        if(symbolTable[$1].type == INTARR) {
+        yyerror("Symbol is of type int array");
        }
        else {
-         strcpy($$.name, $1);
-         $$.type = 0;
+        printf("here?"); 
+	strcpy($$.name, $1);
+	$$.type = 0;
        }
      }
    | IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
@@ -620,7 +586,7 @@ var: IDENT {
          }
          else {
            strcpy($$.name, $1);
-           $$.type = 1;
+           $$.type = 0;
            strcpy($$.ind, $3.name);
          }
        }
@@ -640,7 +606,7 @@ int main(int argc, char **argv) {
 
   yyparse();
 
-  if(mainExists==0){
+  if(mainExists==1){
     yyerror("Error: Main function not found.");
   }
 
