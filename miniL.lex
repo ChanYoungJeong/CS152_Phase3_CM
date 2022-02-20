@@ -66,7 +66,7 @@ LINE      [\n]
 "false"                  {currentPosition += 5; return FALSE;}
 "return"                 {currentPosition += 6; return RETURN;}
 
-"-"			             {currentPosition += 1; return SUB;}
+"-"			 {currentPosition += 1; return SUB;}
 {ADD}                    {currentPosition += 1; return ADD;}
 {MULT}                   {currentPosition += 1; return MULT;}
 {DIV}                    {currentPosition += 1; return DIV;}
@@ -85,13 +85,13 @@ LINE      [\n]
 {R_PAREN}                {currentPosition += 1; return R_PAREN;}
 "["                      {currentPosition += 1; return L_SQUARE_BRACKET;}
 "]"                      {currentPosition += 1; return R_SQUARE_BRACKET;}
-{ASSIGN}	                {currentPosition += 2; return ASSIGN;}
+{ASSIGN}	         {currentPosition += 2; return ASSIGN;}
 
 
 {SPACE}	  {currentPosition += 1;}
 {LINE}	  {currentLine += 1; currentPosition = 0;}
 {NUM}      {currentPosition += yyleng; yylval.numVal = atoi(yytext); return NUM;}
-{ALPHANUM} {currentPosition += yyleng; yylval.identVal = yytext; return IDENT;}
+{ALPHANUM} {currentPosition += yyleng; char *ptr = new char[yyleng]; strcpy(ptr, yytext); yylval.identVal = ptr; return IDENT;}
 {IDENT}    {printf("Error at line %d, column %d: Identifier \"%s\" must begin with a letter\n", currentLine, currentPosition, yytext); exit(0);}
 {BOTH}     {printf("Error at line %d, column %d: Identifier \"%s\" cannot end with an underscore\n", currentLine, currentPosition, yytext); exit(0);}
 ##.*       {currentLine += 1; currentPosition = 0;}

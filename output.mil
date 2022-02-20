@@ -1,11 +1,7 @@
 func main
-. a : integer
+. abs
 . __temp__0
-= __temp__0, k +
-. __temp__1
-= __temp__1, 150
-. __temp__2
-- __temp__2, __temp__0, __temp__1
-= a :=, __temp__2
-.> a;
+= __temp__0, 150
+= abs, __temp__0
+.> abs
 endfunc

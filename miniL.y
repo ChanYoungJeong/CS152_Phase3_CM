@@ -17,6 +17,7 @@ extern int currentPosition;
 #include <stack>
 #include <vector>
 #include <map>
+
 using namespace std;
 
 enum symbolType {INT, INTARR, FUNC};
@@ -188,7 +189,6 @@ void checkSymbol(string name) {
 %token <numVal> NUM
 %token <identVal> IDENT
 
-
 /* other special symbols */
 %token SEMICOLON
 %token COLON
@@ -205,6 +205,7 @@ void checkSymbol(string name) {
 %type <attr> expression_list
 %type <identVal> comp
 %type <attr> vars dos ifs whiles reads writes continues breaks returns
+%type <attr> nothing
 
 /* %start program */
 %start start
@@ -238,6 +239,7 @@ function : FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON B
             while (!paramStack.empty()) {
               paramStack.pop();
             }
+		cout << "mainExists : " << mainExists << endl;
           };
 
 declarations: /*epsilon*/
@@ -246,6 +248,7 @@ declarations: /*epsilon*/
 		;
 
 declaration:	IDENT COLON INTEGER {
+	    
                identStack.push($1);
                paramStack.push($1);
                while(!identStack.empty()) {
@@ -288,11 +291,11 @@ statement:	vars
 		;
 
 vars:      var ASSIGN expression {
-      
-	     inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-	     outCode << inCode.rdbuf();
-	     inCode.clear();
-	     inCode.str(" ");
+
+	      inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+	      outCode << inCode.rdbuf();
+	      inCode.clear();
+ 	      inCode.str(" ");	
            };
 
 
@@ -384,7 +387,7 @@ reads:  READ var var_loop {
           };
      
 writes: WRITE var var_loop {
-            varStack.push($2.name);
+	    varStack.push($2.name);
             while (!varStack.empty()) {
                 if ($2.type == 0) {
                     inCode << ".> " << varStack.top() << endl;
@@ -557,20 +560,26 @@ expression_list : expression
 		| expression_list COMMA expression
 		{expStack.push($3.name);}
 		;
+nothing : /*epsilon*/
 
 var : IDENT {
-	printf("var->IDENT");
-        checkSymbol($1);
+
+	string *str = new string;
+	*str = $1;
+	
+	checkSymbol(*str);
         if(symbolTable[$1].type == INTARR) {
         yyerror("Symbol is of type int array");
        }
        else {
-        printf("here?"); 
-	strcpy($$.name, $1);
+	cout << "$1 = " << $1 << endl;
+	strcpy($$.name , $1);	
 	$$.type = 0;
-       }
+ 	}
+	
      }
-   | IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
+   
+      |IDENT L_SQUARE_BRACKET expression R_SQUARE_BRACKET {
        checkSymbol($1);
        if(symbolTable[$1].type == INT) {
          yyerror("Symbol is of type int");

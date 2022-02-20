@@ -3,14 +3,14 @@ beginparams
 endparams
 beginlocals
 
-  a : integer;
+  abs : integer;
 
 endlocals
 
 beginbody
-  
-  a := 150;
-  write a;
+
+  abs := 150;
+  write abs;
 
 endbody
 
