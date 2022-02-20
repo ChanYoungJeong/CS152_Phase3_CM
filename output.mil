@@ -1,7 +1,19 @@
 func main
-. abs
+. a
+. b
+. c
 . __temp__0
-= __temp__0, 150
-= abs, __temp__0
-.> abs
+= __temp__0, 100
+= a, __temp__0
+. __temp__1
+= __temp__1, 50
+= b, __temp__1
+. __temp__2
+= __temp__2, a
+. __temp__3
+= __temp__3, b
+. __temp__4
+- __temp__4, __temp__2, __temp__3
+= c, __temp__4
+.> c
 endfunc

@@ -172,6 +172,8 @@ void checkSymbol(string name) {
 %token LTE
 %token GTE
 
+
+
 %left ADD
 %left SUB
 %left MULT
@@ -460,16 +462,18 @@ comp: EQ { $$ = const_cast<char*>("=="); }
 
 expression : mul_exp {
               strcpy($$.name,$1.name);
-              $$.type = $1.type;
+	      $$.type = $1.type;
              }
-		| expression ADD mul_exp {
-              string out = makeTemp();
+		|expression ADD mul_exp {
+              cout << "plus";
+	      string out = makeTemp();
               inCode << ". " << out << endl;
               inCode << "+ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
               strcpy($$.name, out.c_str());
             }
 		| expression SUB mul_exp {
-              string out = makeTemp();
+	      cout << "minus";
+	      string out = makeTemp();
               inCode << ". " << out << endl;
               inCode << "- " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
               strcpy($$.name, out.c_str());
@@ -477,14 +481,14 @@ expression : mul_exp {
 		;
 
 mul_exp : term {
-		 strcpy($$.name, $1.name);
+		strcpy($$.name, $1.name);
          	$$.type = $1.type;
 		}
-       	 | mul_exp MULT term {
-		     string out = makeTemp();
-         inCode << ". " << out << endl;
-         inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
-         strcpy($$.name, out.c_str());
+       	|mul_exp MULT term {
+	string out = makeTemp();
+        inCode << ". " << out << endl;
+        inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+        strcpy($$.name, out.c_str());
 		}
         |mul_exp DIV term {
         string out = makeTemp();
@@ -530,10 +534,7 @@ term :  var {
 
        inCode << ". " << zero << endl;
        inCode << "= " << zero << ", " << "0"<< endl;
-        
-       strcpy($$.name, makeTemp().c_str());
-       inCode << ". " << const_cast<char*>($$.name) << endl;
-       inCode << "- " << const_cast<char*>($$.name) <<  ", " << zero << ", "<< const_cast<char*>($2.name) << endl;
+       
       }
     
      | IDENT L_PAREN expression_list R_PAREN {
@@ -615,7 +616,7 @@ int main(int argc, char **argv) {
 
   yyparse();
 
-  if(mainExists==1){
+  if(mainExists==0){
     yyerror("Error: Main function not found.");
   }
 
