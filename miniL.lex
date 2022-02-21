@@ -66,7 +66,7 @@ LINE      [\n]
 "false"                  {currentPosition += 5; return FALSE;}
 "return"                 {currentPosition += 6; return RETURN;}
 
-{SUB}			 {currentPosition += 1; return SUB;}
+"-"            			 {currentPosition += 1; return SUB;}
 {ADD}                    {currentPosition += 1; return ADD;}
 {MULT}                   {currentPosition += 1; return MULT;}
 {MOD}                    {currentPosition += 1; return MOD;}
