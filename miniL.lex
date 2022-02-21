@@ -67,10 +67,10 @@ LINE      [\n]
 "return"                 {currentPosition += 6; return RETURN;}
 
 {SUB}			 {currentPosition += 1; return SUB;}
-{ADD} 	                 {currentPosition += 1; return ADD;}
+{ADD}                    {currentPosition += 1; return ADD;}
 {MULT}                   {currentPosition += 1; return MULT;}
-{DIV}                    {currentPosition += 1; return DIV;}
 {MOD}                    {currentPosition += 1; return MOD;}
+{DIV}                    {currentPosition += 1; return DIV;}
 {EQ}                     {currentPosition += 2; return EQ;}
 {NEQ}                    {currentPosition += 2; return NEQ;}
 {LT}                     {currentPosition += 1; return LT;}

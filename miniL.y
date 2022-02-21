@@ -57,14 +57,14 @@ extern FILE *yyin;
 string makeTemp() {
   stringstream ss;
   ss << tempCount++;
-  string temp = "__temp__" + ss.str();
+  string temp = "__temp" + ss.str();
   return temp;
 }
 
 string makeLabel() {
   stringstream ss;
   ss << labelCount++;
-  string temp = "__label__" + ss.str();
+  string temp = "__label" + ss.str();
   return temp;
 }
 
@@ -162,30 +162,29 @@ void checkSymbol(string name) {
 %token FALSE
 %token RETURN
 
-/* arithmetic operators */
+
+%left MOD 
+%left EQ
+%left NEQ 
+%left LT
+%left GT
+%left LTE
+%left GTE
 
 /* comparison operators */
-%token EQ
-%token NEQ
-%token LT
-%token GT
-%token LTE
-%token GTE
-
-
 
 %left ADD
-%left SUB
+%left SUB 
 %left MULT
 %left DIV
-%left MOD
-%left L_SQUARE_BRACKET
-%left R_SQUARE_BRACKET
-%left L_PAREN
-%left R_PAREN
 
-%right ASSIGN
-%right NOT
+%token L_SQUARE_BRACKET
+%token R_SQUARE_BRACKET
+%token L_PAREN
+%token R_PAREN
+
+%token ASSIGN
+%token NOT
 
 /* identifiers and numbers */
 %token <numVal> NUM
@@ -195,6 +194,7 @@ void checkSymbol(string name) {
 %token SEMICOLON
 %token COLON
 %token COMMA
+
 
 /* grammars */
 %type <attr> var
@@ -293,7 +293,14 @@ statement:	vars
 		;
 
 vars:      var ASSIGN expression {
-
+		if($1.type == INTARR){
+		inCode << "[]= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.ind) << ", " << const_cast<char*>($3.name) << endl;
+		cout << $3.name << endl;
+		outCode << inCode.rdbuf();
+		inCode.clear();
+		inCode.str(" ");
+		}
+		else	
 	      inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
 	      outCode << inCode.rdbuf();
 	      inCode.clear();
@@ -470,6 +477,7 @@ expression : mul_exp {
               inCode << ". " << out << endl;
               inCode << "+ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
               strcpy($$.name, out.c_str());
+		
             }
 		| expression SUB mul_exp {
 	      cout << "minus";
@@ -482,7 +490,7 @@ expression : mul_exp {
 
 mul_exp : term {
 		strcpy($$.name, $1.name);
-         	$$.type = $1.type;
+		$$.type = $1.type;
 		}
        	|mul_exp MULT term {
 	string out = makeTemp();
@@ -523,7 +531,6 @@ term :  var {
     | NUM {
         $$.val = $1;
         $$.type = 0;
-
         strcpy($$.name, makeTemp().c_str());
         strcpy($$.ind, $$.name);
         inCode << ". " << const_cast<char*>($$.name) << endl;
@@ -565,10 +572,7 @@ nothing : /*epsilon*/
 
 var : IDENT {
 
-	string *str = new string;
-	*str = $1;
-	
-	checkSymbol(*str);
+	checkSymbol($1);
         if(symbolTable[$1].type == INTARR) {
         yyerror("Symbol is of type int array");
        }
@@ -596,7 +600,7 @@ var : IDENT {
          }
          else {
            strcpy($$.name, $1);
-           $$.type = 0;
+           $$.type = 1;
            strcpy($$.ind, $3.name);
          }
        }
