@@ -1,61 +1,40 @@
+func add
+. a
+. b
+= b, $0
+= a, $1
+. __temp0
++ __temp0, a, b
+ret __temp0
+endfunc
+func mult
+. a
+. b
+= b, $0
+= a, $1
+. __temp1
+* __temp1, a, b
+ret __temp1
+endfunc
 func main
-.[] a, 20
+. a
 . b
 . c
-. __temp0
-= __temp0, 3
-= b, __temp0
-. __temp1
-= __temp1, 5
-= c, __temp1
+. d
+= a, 100
+= b, 50
+param a
+param b
 . __temp2
-= __temp2, 0
+call add, __temp2
+= c, __temp2
+.> c
 . __temp3
-= __temp3, b
++ __temp3, a, b
+param c
+param __temp3
 . __temp4
-= __temp4, c
-. __temp5
-+ __temp5, __temp3, __temp4
-[]= a, __temp2, __temp5
- . __temp6
-= __temp6, 0
-.[]> a, __temp6
-. __temp7
-= __temp7, 1
-. __temp8
-= __temp8, 100
-[]= a, __temp7, __temp8
- . __temp9
-= __temp9, 1
-.[]> a, __temp9
-. __temp10
-= __temp10, 2
-. __temp11
-= __temp11, 200
-[]= a, __temp10, __temp11
- . __temp12
-= __temp12, 2
-.[]> a, __temp12
-. __temp13
-= __temp13, 3
-. __temp14
-= __temp14, 0
-. __temp15
-=[] __temp15, a, __temp14
-. __temp16
-= __temp16, 1
-. __temp17
-=[] __temp17, a, __temp16
-. __temp18
-= __temp18, c
-. __temp19
-+ __temp19, __temp17, __temp18
-. __temp20
-= __temp20, 0
-. __temp21
-* __temp21, __temp15, 
-[]= a, __temp13, __temp21
- . __temp22
-= __temp22, 3
-.[]> a, __temp22
+call mult, __temp4
+= d, __temp4
+.> d
 endfunc

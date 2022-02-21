@@ -295,13 +295,10 @@ statement:	vars
 vars:      var ASSIGN expression {
 		if($1.type == INTARR){
 		inCode << "[]= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.ind) << ", " << const_cast<char*>($3.name) << endl;
-		cout << $3.name << endl;
-		outCode << inCode.rdbuf();
-		inCode.clear();
-		inCode.str(" ");
 		}
-		else	
-	      inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+		else {
+	      	inCode << "= " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+		}
 	      outCode << inCode.rdbuf();
 	      inCode.clear();
  	      inCode.str(" ");	
@@ -403,6 +400,10 @@ writes: WRITE var var_loop {
                     varStack.pop();
                 }
                 else {
+		    string out = makeTemp();
+	            strcpy($$.name, out.c_str());
+		    inCode << ". " << out << endl;
+		    inCode << "=[] " << out << ", " << const_cast<char*>($2.name) << ", " << const_cast<char*>($2.ind) << endl;
                     inCode << ".[]> " << varStack.top() << ", "  <<  const_cast<char*>($2.ind) << endl;
                     varStack.pop();
                 }
@@ -474,7 +475,7 @@ expression : mul_exp {
 		|expression ADD mul_exp {
               cout << "plus";
 	      string out = makeTemp();
-              inCode << ". " << out << endl;
+	      inCode << ". " << out << endl;
               inCode << "+ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
               strcpy($$.name, out.c_str());
 		
@@ -494,7 +495,7 @@ mul_exp : term {
 		}
        	|mul_exp MULT term {
 	string out = makeTemp();
-        inCode << ". " << out << endl;
+	inCode << ". " << out << endl;
         inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
         strcpy($$.name, out.c_str());
 		}
@@ -516,14 +517,15 @@ term :  var {
         $$.val = $1.val;
         $$.type = $1.type;
         if ($1.type != 1) {
-          strcpy($$.name, makeTemp().c_str());
+          strcpy($$.name, $1.name);
           strcpy($$.ind, $$.name);
-          inCode << ". " << const_cast<char*>($$.name) << endl;
-          inCode << "= " << const_cast<char*>($$.name) <<  ", " << const_cast<char*>($1.name) << endl;
+	  cout << "term -> var :, var = " << $1.name << endl;
+          /*inCode << ". " << const_cast<char*>($$.name) << endl;*/
+          /*inCode << "= " << const_cast<char*>($$.name) <<  ", " << const_cast<char*>($1.name) << endl;*/
         }
         else if ($1.type == 1) {
           strcpy($$.name, makeTemp().c_str());
-          inCode << ". " <<  const_cast<char*>($$.name) << endl;
+	  inCode << ". " <<  const_cast<char*>($$.name) << endl;
           inCode << "=[] " << const_cast<char*>($$.name) << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($1.ind) << endl;
         }
 
@@ -531,16 +533,15 @@ term :  var {
     | NUM {
         $$.val = $1;
         $$.type = 0;
-        strcpy($$.name, makeTemp().c_str());
+	char num_char[100];
+	sprintf(num_char, "%d", $1);	
+        strcpy($$.name, num_char);
         strcpy($$.ind, $$.name);
-        inCode << ". " << const_cast<char*>($$.name) << endl;
-        inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;
+        /*inCode << ". " << const_cast<char*>($$.name) << endl;
+        inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;*/
       }
      | L_PAREN expression R_PAREN {
-       string zero = makeTemp();
-
-       inCode << ". " << zero << endl;
-       inCode << "= " << zero << ", " << "0"<< endl;
+       strcpy($$.name, $2.name);
        
       }
     
@@ -590,7 +591,7 @@ var : IDENT {
          yyerror("Symbol is of type int");
        }
        else {
-         if ($3.type == 1) {
+          if ($3.type == 1) {
            string out = makeTemp();
            $$.type = 1;
            strcpy($$.ind, out.c_str());
