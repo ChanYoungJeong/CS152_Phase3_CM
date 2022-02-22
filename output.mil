@@ -1,23 +1,34 @@
-func main
-. i
-= i, 0
-: __label2
+func fibonacci
+. k
+= k, $0
 . __temp0
-<= __temp0, i, 10
+<= __temp0, k, 1
 ?:= __label0, __temp0
 := __label1
 : __label0
-.> i
-. __temp1
-> __temp1, i, 2
-?:= __label3, __temp1
-:= __label4
-: __label3
-:= __label4
-: __label4
-. __temp2
-+ __temp2, i, 1
-= i, __temp2
- := __label2
+ret 1
 : __label1
+. __temp1
+- __temp1, k, 1
+param __temp1
+. __temp2
+call fibonacci, __temp2
+. __temp3
+- __temp3, k, 2
+param __temp3
+. __temp4
+call fibonacci, __temp4
+. __temp5
++ __temp5, __temp2, __temp4
+ret __temp5
+endfunc
+func main
+. n
+. fib_n
+.< n
+param n
+. __temp6
+call fibonacci, __temp6
+= fib_n, __temp6
+.> fib_n
 endfunc

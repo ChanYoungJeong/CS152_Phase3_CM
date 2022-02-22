@@ -223,8 +223,12 @@ start : /*epsilon*/
 	|start function;
 
 
-function : FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON BEGIN_PARAMS 
-          declarations { 
+function : FUNCTION IDENT {
+		inCode << "func " << string($2) << endl;
+		Funct f($2);
+		addFunct(f);	} 
+	   
+	    SEMICOLON BEGIN_PARAMS declarations { 
             paramCount = 0;
             while (!paramStack.empty()){
               inCode << "= " << paramStack.top() << ", " << "$" << paramCount++ << endl;
@@ -237,8 +241,8 @@ function : FUNCTION IDENT {inCode << "func " << string($2) << endl;} SEMICOLON B
             if (strcmp($2, "main")==0) {
               mainExists = 1;      
             }
-            Funct f($2);
-            addFunct(f);
+            /*Funct f($2);
+            addFunct(f);*/
             while (!paramStack.empty()) {
               paramStack.pop();
             }
@@ -277,7 +281,7 @@ declaration:	IDENT COLON INTEGER {
                }
              };
 	
-statements:	statement SEMICOLON statements
+statements: statement SEMICOLON statements
 		| /*epsilon*/ 
 		;
 
