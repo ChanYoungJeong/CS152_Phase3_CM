@@ -204,6 +204,7 @@ void checkSymbol(string name) {
 %type <attr> statement
 %type <attr> mul_exp
 %type <attr> bool_exp
+%type <attr> rel_exp
 %type <attr> expression_list
 %type <identVal> comp
 %type <attr> vars dos ifs whiles reads writes continues breaks returns
@@ -305,24 +306,31 @@ vars:      var ASSIGN expression {
            };
 
 
-ifs:	IF bool_exp THEN statements ENDIF {
+ifs:	IF bool_exp THEN {
              string start = makeLabel();
              string endif = makeLabel();
              labelStack.push(endif); 
              inCode << "?:= " << start << ", " << const_cast<char*>($2.name) << endl;
              inCode << ":= " << endif << endl;
              inCode << ": " << start << endl;
-           }
- 
-        |IF bool_exp THEN statements ELSE statements ENDIF {
+           } 
+           statement SEMICOLON statements elses ENDIF {
              inCode << ": " << labelStack.top() << endl;
              labelStack.pop();
              
              outCode << inCode.rdbuf();
              inCode.clear();
              inCode.str(" ");
+              };
 
-           };
+elses: /*epsilon*/
+          | ELSE {
+              string label = makeLabel(); 
+              inCode << ":= " << label << endl;
+              inCode << ": " << labelStack.top() << endl;
+              labelStack.pop();
+              labelStack.push(label);
+          } statement SEMICOLON statements;
 
 whiles:	WHILE bool_exp BEGINLOOP {
               string condition = makeLabel();
@@ -447,19 +455,36 @@ returns:    RETURN expression {
              inCode.str(" ");
          };
 
-bool_exp : bool_exp expression comp expression {
-             string out = makeTemp();
-             strcpy($$.name, out.c_str());
-             inCode << ". " << out << endl;
-           }
-	   |NOT bool_exp {
-             string out = makeTemp();
-             strcpy($$.name, out.c_str());
-             inCode << ". " << out << endl;
-             inCode << "! " << out << ", " << const_cast<char*>($2.name) << endl;
-           }
-	   |/*epsilon*/
-	   ;
+bool_exp: rel_exp {
+                    strcpy($$.name, $1.name);
+                } 
+             | NOT rel_exp {
+                    string out = makeTemp();
+                    strcpy($$.name, out.c_str());
+                    inCode << "! " << out << const_cast<char*>($2.name) << endl;
+                };
+
+rel_exp: expression comp expression {
+          string out = makeTemp();
+          strcpy($$.name, out.c_str());
+          inCode << ". " << out << endl;
+          inCode << $2 << " " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
+            }
+        | TRUE {
+            string out = makeTemp();
+            strcpy($$.name, out.c_str());
+            inCode << ". " << out << endl;
+            inCode << "= " << out << ", " << "1" << endl;
+          }
+        | FALSE {
+            string out = makeTemp();
+            strcpy($$.name, out.c_str());
+            inCode << ". " << out << endl;
+            inCode << "= " << out << ", " << "0" << endl;
+          }
+        | L_PAREN bool_exp R_PAREN {
+                strcpy($$.name, $2.name);
+            };
 
 comp: EQ { $$ = const_cast<char*>("=="); } 
     | NEQ { $$ = const_cast<char*>("!="); }
