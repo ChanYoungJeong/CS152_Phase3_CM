@@ -1,40 +1,23 @@
-func add
-. a
-. b
-= b, $0
-= a, $1
-. __temp0
-+ __temp0, a, b
-ret __temp0
-endfunc
-func mult
-. a
-. b
-= b, $0
-= a, $1
-. __temp1
-* __temp1, a, b
-ret __temp1
-endfunc
 func main
-. a
-. b
-. c
-. d
-= a, 100
-= b, 50
-param a
-param b
+. i
+= i, 0
+: __label2
+. __temp0
+<= __temp0, i, 10
+?:= __label0, __temp0
+:= __label1
+: __label0
+.> i
+. __temp1
+> __temp1, i, 2
+?:= __label3, __temp1
+:= __label4
+: __label3
+:= __label4
+: __label4
 . __temp2
-call add, __temp2
-= c, __temp2
-.> c
-. __temp3
-+ __temp3, a, b
-param c
-param __temp3
-. __temp4
-call mult, __temp4
-= d, __temp4
-.> d
++ __temp2, i, 1
+= i, __temp2
+ := __label2
+: __label1
 endfunc

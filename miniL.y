@@ -207,7 +207,7 @@ void checkSymbol(string name) {
 %type <attr> rel_exp
 %type <attr> expression_list
 %type <identVal> comp
-%type <attr> vars dos ifs whiles reads writes continues breaks returns
+%type <attr> vars dos ifs elses whiles reads writes continues breaks returns
 %type <attr> nothing
 
 /* %start program */
@@ -278,8 +278,7 @@ declaration:	IDENT COLON INTEGER {
              };
 	
 statements:	statement SEMICOLON statements
-		|statement SEMICOLON
-		|statement 
+		| /*epsilon*/ 
 		;
 
 statement:	vars
