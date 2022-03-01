@@ -44,7 +44,7 @@ map<string, Funct> functTable;
 stack<string> varStack; 
 stack<string> identStack;
 stack<string> expStack; 
-stack<string> labelStack;
+vector<string> label_vector;
 stack<string> paramStack;
 stringstream inCode;
 ostringstream outCode;
@@ -78,10 +78,10 @@ void yyerror(string msg) {
 }
 
 void addFunct(Funct f) {
-  if (functTable.find(f.name) == functTable.end()) {
+ if (functTable.find(f.name) == functTable.end()) {
     functTable[f.name] = f;
   }
-  else {
+ else {
     string error = "Function is already declared: " + f.name;
     yyerror(error);
   }
@@ -173,10 +173,10 @@ void checkSymbol(string name) {
 
 /* comparison operators */
 
-%left ADD
-%left SUB 
-%left MULT
-%left DIV
+%token ADD
+%token SUB 
+%token MULT
+%token DIV
 
 %token L_SQUARE_BRACKET
 %token R_SQUARE_BRACKET
@@ -208,7 +208,6 @@ void checkSymbol(string name) {
 %type <attr> expression_list
 %type <identVal> comp
 %type <attr> vars dos ifs elses whiles reads writes continues breaks returns
-%type <attr> nothing
 
 /* %start program */
 %start start
@@ -312,15 +311,14 @@ vars:      var ASSIGN expression {
 ifs:	IF bool_exp THEN {
              string start = makeLabel();
              string endif = makeLabel();
-             labelStack.push(endif); 
+             label_vector.push_back(endif); 
              inCode << "?:= " << start << ", " << const_cast<char*>($2.name) << endl;
              inCode << ":= " << endif << endl;
              inCode << ": " << start << endl;
            } 
            statement SEMICOLON statements elses ENDIF {
-             inCode << ": " << labelStack.top() << endl;
-             labelStack.pop();
-             
+             inCode << ": " << label_vector.back() << endl;
+             label_vector.pop_back();             
              outCode << inCode.rdbuf();
              inCode.clear();
              inCode.str(" ");
@@ -330,9 +328,9 @@ elses: /*epsilon*/
           | ELSE {
               string label = makeLabel(); 
               inCode << ":= " << label << endl;
-              inCode << ": " << labelStack.top() << endl;
-              labelStack.pop();
-              labelStack.push(label);
+              inCode << ": " << label_vector.back() << endl;
+              label_vector.pop_back();
+              label_vector.push_back(label);
           } statement SEMICOLON statements;
 
 whiles:	WHILE bool_exp BEGINLOOP {
@@ -346,36 +344,37 @@ whiles:	WHILE bool_exp BEGINLOOP {
               inCode << "?:= " << condition << ", " << const_cast<char*>($2.name) << endl;
               inCode << ":= " << endlabel << endl;
               inCode << ": " << condition << endl;
-              labelStack.push(start);
-              labelStack.push(endlabel);
+              label_vector.push_back(start);
+              label_vector.push_back(endlabel);
 
             } statements ENDLOOP {
                 outCode << inCode.rdbuf();
                 inCode.clear();
                 inCode.str(" ");
-                string endlabel = labelStack.top();
-                labelStack.pop();
-                string start = labelStack.top();
-                labelStack.pop();
+                string endlabel = label_vector.back();
+                label_vector.pop_back();
+                string start = label_vector.back();
+                label_vector.pop_back();
                 inCode << ":= " << start << endl;
                 inCode << ": " << endlabel << endl;
                 outCode << inCode.rdbuf();
                 inCode.clear();
                 inCode.str(" ");
+		cout << "WHILE" << endl;
            };
 
 dos:	DO BEGINLOOP {
              string start = makeLabel();
-             labelStack.push(start);
+             label_vector.push_back(start);
              outCode << ": " << start << endl;
              outCode << inCode.rdbuf();
              inCode.clear();
              inCode.str(" ");
             }
            statements ENDLOOP WHILE bool_exp {
-             string start = labelStack.top();
+             string start = label_vector.back();
              inCode << "?:= " << start << ", " << const_cast<char*>($7.name) << endl;
-             labelStack.pop(); 
+             label_vector.pop_back(); 
              outCode << inCode.rdbuf();
              inCode.clear();
              inCode.str(" ");
@@ -425,8 +424,8 @@ writes: WRITE var var_loop {
          };
 
 continues:  CONTINUE {
-             if (!labelStack.empty()) {
-               inCode << ":= " << labelStack.top() << endl;
+             if (!label_vector.empty()) {
+               inCode << ":= " << label_vector.back() << endl;
                outCode << inCode.rdbuf();
                inCode.clear();
                inCode.str(" ");
@@ -437,11 +436,14 @@ continues:  CONTINUE {
            };
 
 breaks : BREAK {
-             if (!labelStack.empty()) {
-               inCode << ":= " << labelStack.top() << endl;
-               outCode << inCode.rdbuf();
+             if (!label_vector.empty()) {
+	       cout << label_vector.size();
+	       inCode << ":= " << label_vector[label_vector.size() - 2] << endl;
+	       outCode << inCode.rdbuf();
+
                inCode.clear();
                inCode.str(" ");
+		cout << "BREAK" << endl;
              }
              else {
                yyerror("Error: Break used outside of loop");
@@ -526,6 +528,7 @@ mul_exp : term {
 	inCode << ". " << out << endl;
         inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
         strcpy($$.name, out.c_str());
+	cout << "MULT" << endl;
 		}
         |mul_exp DIV term {
         string out = makeTemp();
@@ -597,7 +600,6 @@ expression_list : expression
 		| expression_list COMMA expression
 		{expStack.push($3.name);}
 		;
-nothing : /*epsilon*/
 
 var : IDENT {
 

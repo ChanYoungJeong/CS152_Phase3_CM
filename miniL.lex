@@ -14,25 +14,25 @@ NUM      [0-9]+
 ALPHANUM [A-Za-z][A-Za-z0-9]*([A-Za-z0-9]*|[_][_]*[A-Za-z0-9][A-Za-z0-9]*)+
 BOTH     [A-Za-z0-9][A-Za-z0-9_]*[_]
 IDENT    [0-9_][A-Za-z0-9_]*[A-Za-z0-9_]
-SUB      ['-']
-ADD      ['+']
-MULT     ['*']
-DIV      ['/']
-MOD      ['%']
-EQ       ["="]["="]
-NEQ      ["<"][">"]
-LT       ['<']
-GT       ['>']
-LTE      ["<"]["="]
-GTE      [">"]["="]
-SEMICOLON [';']
-COLON     [':']
-COMMA     [',']
-L_PAREN   ['(']
-R_PAREN   [')']
+SUB      [-]
+ADD      [+]
+MULT     [*]
+DIV      [/]
+MOD      [%]
+EQ       [=][=]
+NEQ      [<][>]
+LT       [<]
+GT       [>]
+LTE      [<][=]
+GTE      [>][=]
+SEMICOLON [;]
+COLON     [:]
+COMMA     [,]
+L_PAREN   [(]
+R_PAREN   [)]
 /* L_SQUARE_BRACKET ['\['] */
 /* R_SQUARE_BRACKET ['\]'] */
-ASSIGN    [":"]["="]
+ASSIGN    [:][=]
 LINE      [\n]
 
 
@@ -66,7 +66,7 @@ LINE      [\n]
 "false"                  {currentPosition += 5; return FALSE;}
 "return"                 {currentPosition += 6; return RETURN;}
 
-"-"            			 {currentPosition += 1; return SUB;}
+"-"         		 {currentPosition += 1; return SUB;}
 {ADD}                    {currentPosition += 1; return ADD;}
 {MULT}                   {currentPosition += 1; return MULT;}
 {MOD}                    {currentPosition += 1; return MOD;}
