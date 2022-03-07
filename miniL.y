@@ -587,6 +587,19 @@ term :  var {
 NUMBERS : SUB NUM {
         $$.val = $2 * (-1);
         $$.type = 0;
+	string minus = makeTemp();
+	inCode << ". " << minus << endl;
+	inCode << "= " << minus << ", " << "0" << endl;
+
+	string num = makeTemp();
+	inCode << ". " << num << endl;
+	inCode << "= " << num << ", " << $2 << endl;
+
+	strcpy($$.name , makeTemp().c_str());
+	inCode << ". " << const_cast<char*>($$.name) << endl;
+	inCode << "- " << const_cast<char*>($$.name) << ", " << minus << ", " << num << endl;
+
+
         }
 
 	| NUM {
