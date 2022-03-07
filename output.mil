@@ -1,27 +1,26 @@
 func main
 . i
+. j
 = i, 0
 : __label2
 . __temp0
-<= __temp0, i, 10
+< __temp0, i, 2
 ?:= __label0, __temp0
 := __label1
 : __label0
-.> i
+= j, 1
+: __label5
 . __temp1
-< __temp1, i, 5
+<= __temp1, j, 3
 ?:= __label3, __temp1
 := __label4
 : __label3
-:= __label4
-: __label4
+.> j
 . __temp2
-> __temp2, i, 2
-?:= __label5, __temp2
-:= __label6
-: __label5
-:= __label1
-: __label6
++ __temp2, j, 1
+= j, __temp2
+ := __label5
+: __label4
 . __temp3
 + __temp3, i, 1
 = i, __temp3

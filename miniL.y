@@ -162,7 +162,6 @@ void checkSymbol(string name) {
 %token FALSE
 %token RETURN
 
-
 %left MOD 
 %left EQ
 %left NEQ 
@@ -207,7 +206,7 @@ void checkSymbol(string name) {
 %type <attr> rel_exp
 %type <attr> expression_list
 %type <identVal> comp
-%type <attr> vars dos ifs elses whiles reads writes continues breaks returns
+%type <attr> vars dos ifs elses whiles reads writes continues breaks returns NUMBERS
 
 /* %start program */
 %start start
@@ -245,8 +244,7 @@ function : FUNCTION IDENT {
             while (!paramStack.empty()) {
               paramStack.pop();
             }
-		cout << "mainExists : " << mainExists << endl;
-          };
+         };
 
 declarations: /*epsilon*/
 		|declaration SEMICOLON declarations
@@ -265,17 +263,17 @@ declaration:	IDENT COLON INTEGER {
                  identStack.pop(); 
                }
              }
-		|IDENT COLON ARRAY L_SQUARE_BRACKET NUM R_SQUARE_BRACKET OF INTEGER {
+		|IDENT COLON ARRAY L_SQUARE_BRACKET NUMBERS R_SQUARE_BRACKET OF INTEGER {
                identStack.push($1);
                paramStack.push($1);
                while(!identStack.empty()) {
                  string out = identStack.top();
-                 Symbol sym(0, $5, out, INTARR);
+                 Symbol sym(0, $5.val , out, INTARR);
                  addSymbol(sym);
-                 if($5 == 0){
-                   yyerror("Error: Array cannot be size 0.");
+                 if($5.val <= 0){
+                   yyerror("Error: Size of Arrary should be greater than 0.");
                  }
-                 inCode << ".[] " << out << ", " << $5 << endl;
+                 inCode << ".[] " << out << ", " << $5.val << endl;
                  identStack.pop(); 
                }
              };
@@ -360,8 +358,7 @@ whiles:	WHILE bool_exp BEGINLOOP {
                 outCode << inCode.rdbuf();
                 inCode.clear();
                 inCode.str(" ");
-		cout << "WHILE" << endl;
-           };
+	    };
 
 dos:	DO BEGINLOOP {
              string start = makeLabel();
@@ -437,14 +434,12 @@ continues:  CONTINUE {
 
 breaks : BREAK {
              if (!label_vector.empty()) {
-	       cout << label_vector.size();
 	       inCode << ":= " << label_vector[label_vector.size() - 2] << endl;
 	       outCode << inCode.rdbuf();
 
                inCode.clear();
                inCode.str(" ");
-		cout << "BREAK" << endl;
-             }
+	     }
              else {
                yyerror("Error: Break used outside of loop");
              }
@@ -503,15 +498,13 @@ expression : mul_exp {
 	      $$.type = $1.type;
              }
 		|expression ADD mul_exp {
-              cout << "plus";
-	      string out = makeTemp();
+              string out = makeTemp();
 	      inCode << ". " << out << endl;
               inCode << "+ " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
               strcpy($$.name, out.c_str());
 		
             }
 		| expression SUB mul_exp {
-	      cout << "minus";
 	      string out = makeTemp();
               inCode << ". " << out << endl;
               inCode << "- " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
@@ -528,7 +521,6 @@ mul_exp : term {
 	inCode << ". " << out << endl;
         inCode << "* " << out << ", " << const_cast<char*>($1.name) << ", " << const_cast<char*>($3.name) << endl;
         strcpy($$.name, out.c_str());
-	cout << "MULT" << endl;
 		}
         |mul_exp DIV term {
         string out = makeTemp();
@@ -550,8 +542,7 @@ term :  var {
         if ($1.type != 1) {
           strcpy($$.name, $1.name);
           strcpy($$.ind, $$.name);
-	  cout << "term -> var :, var = " << $1.name << endl;
-          /*inCode << ". " << const_cast<char*>($$.name) << endl;*/
+	  /*inCode << ". " << const_cast<char*>($$.name) << endl;*/
           /*inCode << "= " << const_cast<char*>($$.name) <<  ", " << const_cast<char*>($1.name) << endl;*/
         }
         else if ($1.type == 1) {
@@ -561,16 +552,12 @@ term :  var {
         }
 
       }
-    | NUM {
-        $$.val = $1;
-        $$.type = 0;
-	char num_char[100];
-	sprintf(num_char, "%d", $1);	
-        strcpy($$.name, num_char);
-        strcpy($$.ind, $$.name);
-        /*inCode << ". " << const_cast<char*>($$.name) << endl;
-        inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;*/
-      }
+
+     | NUMBERS 	{
+	$$.val = $1.val;
+	$$.type = $1.type;
+	}
+
      | L_PAREN expression R_PAREN {
        strcpy($$.name, $2.name);
        
@@ -596,6 +583,24 @@ term :  var {
         strcpy($$.name, out.c_str());
       };
 
+
+NUMBERS : SUB NUM {
+        $$.val = $2 * (-1);
+        $$.type = 0;
+        }
+
+	| NUM {
+        $$.val = $1;
+        $$.type = 0;
+        char num_char[100];
+        sprintf(num_char, "%d", $1);
+        strcpy($$.name, num_char);
+        strcpy($$.ind, $$.name);
+        /*inCode << ". " << const_cast<char*>($$.name) << endl;
+        inCode << "= " << const_cast<char*>($$.name) <<  ", " << $$.val << endl;*/
+     	 };
+
+
 expression_list : expression 
 		| expression_list COMMA expression
 		{expStack.push($3.name);}
@@ -608,7 +613,6 @@ var : IDENT {
         yyerror("Symbol is of type int array");
        }
        else {
-	cout << "$1 = " << $1 << endl;
 	strcpy($$.name , $1);	
 	$$.type = 0;
  	}
