@@ -1,29 +1,11 @@
 func main
-. i
-. j
-= i, 0
-: __label2
+. a
+. b
+. c
+= a, 100
+= b, 50
 . __temp0
-< __temp0, i, 2
-?:= __label0, __temp0
-:= __label1
-: __label0
-= j, 1
-: __label5
-. __temp1
-<= __temp1, j, 3
-?:= __label3, __temp1
-:= __label4
-: __label3
-.> j
-. __temp2
-+ __temp2, j, 1
-= j, __temp2
- := __label5
-: __label4
-. __temp3
-+ __temp3, i, 1
-= i, __temp3
- := __label2
-: __label1
++ __temp0, a, b
+= c, __temp0
+.> c
 endfunc

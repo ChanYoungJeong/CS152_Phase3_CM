@@ -172,9 +172,9 @@ void checkSymbol(string name) {
 
 /* comparison operators */
 
+%token SUB
+%token MULT 
 %token ADD
-%token SUB 
-%token MULT
 %token DIV
 
 %token L_SQUARE_BRACKET

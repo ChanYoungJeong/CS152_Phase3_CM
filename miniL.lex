@@ -2,7 +2,7 @@
 
 %{   
    /* write your C code here for definitions of variables and including headers */
-   #include "y.tab.h"
+   /*#include "y.tab.h"*/
    #include "miniL-parser.hpp"
    int currentLine = 1;
    int currentPosition = 0; 
